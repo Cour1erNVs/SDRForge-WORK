@@ -26,7 +26,7 @@ jobs:
           sudo pip install . -v
           
       - name: Installation Successful
-        run: echo "✅ SDRForge setup completed successfully on the runner!"
+        run: echo "✅ LTEForge setup completed successfully on the runner!"
 
   create-release:
     needs: install-test 
@@ -38,18 +38,46 @@ jobs:
         with:
           fetch-depth: 0 
 
-      - name: Copy pyproject.toml to Root
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          
+      - name: Install TOML Parser
+        run: pip install tomli
+        
+      - name: Extract Version
+        id: get_version
         run: |
-          cp ./framework/setup/pyproject.toml ./pyproject.toml
-          echo "pyproject.toml copied to root for release action."
+          VERSION=$(python -c "
+import tomli
+import sys
 
-      - name: Create Release from pyproject.toml Version
-        id: create_release
+# The path to your pyproject.toml file
+TOML_PATH = './framework/setup/pyproject.toml'
+
+try:
+    with open(TOML_PATH, 'rb') as f:
+        data = tomli.load(f)
+    print(data['project']['version'])
+except FileNotFoundError:
+    print(f'Error: pyproject.toml not found at {TOML_PATH}', file=sys.stderr)
+    sys.exit(1)
+except Exception as e:
+    print(f'Error reading version: {e}', file=sys.stderr)
+    sys.exit(1)
+" | tr -d '\n')
+
+          # Output the tag name, prefixed with 'v'
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+        shell: bash
+        
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          version_from_toml: true 
+          tag_name: ${{ steps.get_version.outputs.tag }} 
           generate_release_notes: true 
           files: |
             setup.py
