@@ -4,7 +4,6 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "SDRForge"
-
+version = "1.0.0" 
 dependencies = [
-
 ]
