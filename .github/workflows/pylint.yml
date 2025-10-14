@@ -20,12 +20,13 @@ jobs:
           python-version: '3.11'
           
       - name: Install Build Dependencies
+        working-directory: ./framework/setup
         run: |
           sudo apt install python3-setuptools -y 
           sudo pip install . -v
           
       - name: Installation Successful
-        run: echo "✅ LTEForge setup completed successfully on the runner!"
+        run: echo "✅ SDRForge setup completed successfully on the runner!"
 
   create-release:
     needs: install-test 
