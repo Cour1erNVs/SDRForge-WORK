@@ -22,7 +22,8 @@ jobs:
           
       - name: Install Build Dependencies
         working-directory: ./framework/setup
-        # Assuming you still need 'python3-setuptools' for the build process
+        # The project dependencies (including the removed 'halo' and 'blessed') 
+        # are now handled via the updated pyproject.toml and the 'pip install .' command.
         run: |
           sudo apt install python3-setuptools -y
           sudo pip install . -v
