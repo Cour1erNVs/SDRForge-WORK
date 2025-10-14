@@ -2,7 +2,7 @@
 <a href="https://blackhillsinfosec.com"><img width="100%" src="https://github.com/her3ticAVI/SDRForge/images/SDRLogo.png" alt="SDRForge Logo" /></a>
 <hr>
 
-  <a href="https://github.com/blackhillsinfosec/SDRForge/actions"><img alt="GitHub Workflow Status" src="https://img.shields.io/github/actions/workflow/status/blackhillsinfosec/WifiForge/.github%2Fworkflows%2Fpython-app.yml?style=flat-square"></a> 
+  <a href="https://github.com/blackhillsinfosec/SDRForge/actions"><img alt="GitHub Workflow Status" src="https://img.shields.io/github/actions/workflow/status/blackhillsinfosec/SDRForge/.github%2Fworkflows%2Fpython-app.yml?style=flat-square"></a> 
   &nbsp;
   <a href="https://discord.com/invite/bhis"><img alt="Discord" src="https://img.shields.io/discord/967097582721572934?label=Discord&color=7289da&style=flat-square" /></a>
   &nbsp;
@@ -18,14 +18,14 @@
 
 <div style="text-align: center;">
   <h4>
-    <a target="_blank" href="https://wififorge.github.io/" rel="dofollow"><strong>Explore the Docs</strong></a>&nbsp;·&nbsp;
+    <a target="_blank" href="https://sdrforge.github.io/" rel="dofollow"><strong>Explore the Docs</strong></a>&nbsp;·&nbsp;
     <a target="_blank" href="https://discord.com/invite/bhis" rel="dofollow"><strong>Community Help</strong></a>&nbsp;·&nbsp;
-    <a target="_blank" href="https://www.youtube.com/watch?v=lqvq3xH0qYM&t=8s" rel="dofollow"><strong>What is Wifi Forge?</strong></a>&nbsp;·&nbsp;
-    <a target="_blank" href="https://www.blackhillsinfosec.com/wififorge/" rel="dofollow"><strong>Blog Post</strong></a>
+    <a target="_blank" href="https://www.youtube.com/watch?v=lqvq3xH0qYM&t=8s" rel="dofollow"><strong>What is SDRForge?</strong></a>&nbsp;·&nbsp;
+    <a target="_blank" href="https://www.blackhillsinfosec.com/sdrforge/" rel="dofollow"><strong>Blog Post</strong></a>
   </h4>
 </div>
 <hr>
-<a href="https://blackhillsinfosec.com"><img width="75%" height="75%" src="https://github.com/her3ticAVI/MiniNet-framework/blob/main/images/wififorge-running.png" alt="Wifi Forge Running" /></a>
+<a href="https://blackhillsinfosec.com"><img width="75%" height="75%" src="https://github.com/her3ticAVI/SDRForge/iamges/sdrforge-running.png" alt="SDRForge Running" /></a>
 <div align="left">
 
 ## Navigation
