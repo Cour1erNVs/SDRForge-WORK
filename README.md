@@ -13,7 +13,7 @@
   <a href="https://x.com/BHinfoSecurity"><img src="https://img.shields.io/github/stars/blackhillsinfosec/SDRForge?style=flat-square&color=rgb(255%2C218%2C185)" alt="SDRForge Stars" /></a>
   
 <p class="align center">
-<h4><code>SDRForge</code> provides a safe and legal environment for learning radio hacking. Based on the open source WifiForge, this project automatically sets up the radio and wireless environments and tools needed to run a variety of exploitation labs, removing the need for the overhead and hardware normally required to perform these attacks.</h4>
+<h4><code>SDRForge</code> provides a safe and legal environment for learning radio hacking. Based on the open source tool WifiForge, this project automatically sets up the radio and wireless environments and tools needed to run a variety of exploitation labs, removing the need for the overhead and hardware normally required to perform these attacks.</h4>
 </p>
 
 <div style="text-align: center;">
