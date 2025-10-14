@@ -1,0 +1,12 @@
+[build-system]
+requires = ["setuptools", "halo", "blessed"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "SDRForge"
+version = "1.0.0"
+description = "LTEForge setup script with halo spinner."
+dependencies = [
+    "halo",
+    "blessed",
+]
