@@ -1,4 +1,4 @@
-name: CI/CD & Release Pipeline
+name: CI/CD Pipeline
 
 on: 
   push:
@@ -8,6 +8,7 @@ on:
     
 jobs:
   install-test:
+    name: Install and Test
     runs-on: ubuntu-latest
 
     steps:
@@ -21,36 +22,10 @@ jobs:
           
       - name: Install Build Dependencies
         working-directory: ./framework/setup
+        # Assuming you still need 'python3-setuptools' for the build process
         run: |
-          sudo apt install python3-setuptools -y 
+          sudo apt install python3-setuptools -y
           sudo pip install . -v
           
       - name: Installation Successful
         run: echo "✅ LTEForge setup completed successfully on the runner!"
-
-  create-release:
-    needs: install-test 
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 
-
-      - name: Copy pyproject.toml to Root
-        run: |
-          cp ./framework/setup/pyproject.toml ./pyproject.toml
-          echo "pyproject.toml copied to root for release action."
-
-      - name: Create Release from pyproject.toml Version
-        id: create_release
-        uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          version_from_toml: true 
-          generate_release_notes: true 
-          files: |
-            setup.py
-            ./framework/setup/pyproject.toml
