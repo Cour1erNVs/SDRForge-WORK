@@ -1,48 +1,43 @@
 import subprocess
 import sys
-from halo import Halo
 from setuptools import setup
 
-def install_lteforge():
+def install_sdrforge():
     """
-    Runs the necessary setup commands with a blue 'dots' spinner using halo.
+    Runs the necessary setup commands, providing text feedback instead of a spinner.
     """
     
-    # --- 1. Update package list (The original 'sudo apt update -y' command) ---
+    # --- 1. Update package list ---
     command = ["sudo", "apt", "update", "-y"]
     message = "Updating package list..."
     
-    # Create the Halo spinner, set text, color, and spinner type
-    spinner = Halo(
-        text=message, 
-        spinner='dots', 
-        color='blue' # Set the spinner color to blue
-    )
-    
-    # Start the spinner animation
-    spinner.start()
+    print(f"\n[START] {message}")
     
     try:
-        # Run the command. Output is captured to keep the console clean for the spinner.
+        # Run the command. The output is captured but will be visible if the 
+        # CI runner decides to display subprocess output on error.
         subprocess.run(
             command, 
             check=True, # Raise CalledProcessError for non-zero exit codes
-            stdout=subprocess.PIPE, 
-            stderr=subprocess.PIPE
+            # Removed stdout/stderr capture so the system output is handled by the runner
         )
         
         # Command succeeded
-        spinner.succeed(message)
+        print(f"[SUCCESS] {message}")
         
     except subprocess.CalledProcessError as e:
         # Command failed
-        spinner.fail(f"{message} (Failed)")
-        # Optionally print the error output for debugging
-        sys.stderr.write(f"\nError details:\n{e.stderr.decode()}\n")
+        print(f"[FAILURE] {message}")
+        
+        # Print the command output error for debugging
+        if e.stderr:
+            sys.stderr.write(f"\nError details (stderr):\n{e.stderr.decode()}\n")
+        if e.stdout:
+            sys.stderr.write(f"\nError details (stdout):\n{e.stdout.decode()}\n")
+            
         sys.exit(1) # Exit with a failure code
         
     # --- 2. Final Message ---
-    # The original script's final message
     MAGENTA = '\033[35m'
     RESET = '\033[0m'
 
@@ -54,11 +49,11 @@ def install_lteforge():
 # Define the setup entry point
 setup(
     name='SDRForge',
-    version='1.0.0',
-    # We use a custom command execution here instead of a typical entry point
-    # Since this is primarily a shell script wrapper, a standard 'install_requires' 
-    # and using the 'pyproject.toml' for build requirements is sufficient.
+    # Since we are not creating releases, the version is optional here
+    # version='1.0.0',
 )
 
 if __name__ == "__main__":
-    install_lteforge()
+    # Note: When pip installs the package, it executes this block after requirements are checked.
+    # By running the setup logic here, it acts as a post-installation script.
+    install_sdrforge()
