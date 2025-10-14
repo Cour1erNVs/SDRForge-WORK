@@ -1,56 +1,50 @@
-name: CI/CD & Release Pipeline
+create-release:
+  needs: install-test
+  runs-on: ubuntu-latest
 
-on: 
-  push:
-    branches:
-      - main
-      - master
-    
-jobs:
-  install-test:
-    runs-on: ubuntu-latest
+  steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
 
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+    - name: Copy pyproject.toml to Root
+      run: |
+        cp ./framework/setup/pyproject.toml ./pyproject.toml
+        echo "pyproject.toml copied to root for release action."
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          
-      - name: Install Build Dependencies
-        working-directory: ./framework/setup
-        run: |
-          sudo apt install python3-setuptools -y 
-          sudo pip install . -v
-          
-      - name: Installation Successful
-        run: echo "✅ LTEForge setup completed successfully on the runner!"
+    - name: Get Version from pyproject.toml
+      id: get_version
+      # This action reads a specific field from a JSON/TOML file and sets it as an output.
+      uses: jossef/action-set-json-field@v1
+      with:
+        file: ./pyproject.toml
+        field: 'project.version'
+        output-field: 'release_version'
 
-  create-release:
-    needs: install-test 
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 
+    - name: Create Git Tag
+      # Check if a tag for this version already exists before creating.
+      run: |
+        VERSION_TAG="v${{ steps.get_version.outputs.release_version }}"
+        if git rev-parse $VERSION_TAG >/dev/null 2>&1; then
+          echo "Tag $VERSION_TAG already exists. Skipping tag creation."
+        else
+          echo "Creating and pushing tag $VERSION_TAG"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag $VERSION_TAG
+          git push origin $VERSION_TAG
+        fi
 
-      - name: Copy pyproject.toml to Root
-        run: |
-          cp ./framework/setup/pyproject.toml ./pyproject.toml
-          echo "pyproject.toml copied to root for release action."
-
-      - name: Create Release from pyproject.toml Version
-        id: create_release
-        uses: softprops/action-gh-release@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          version_from_toml: true 
-          generate_release_notes: true 
-          files: |
-            setup.py
-            ./framework/setup/pyproject.toml
+    - name: Create GitHub Release
+      id: create_release
+      uses: softprops/action-gh-release@v2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        # Pass the tag name from the created tag directly
+        tag_name: "v${{ steps.get_version.outputs.release_version }}"
+        generate_release_notes: true
+        files: |
+          setup.py
+          ./framework/setup/pyproject.toml
