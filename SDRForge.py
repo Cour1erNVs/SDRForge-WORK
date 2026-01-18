@@ -1,23 +1,105 @@
 #!/usr/bin/env python3
 """
 Layout:
-- Top-left: menu/help
-- Top-right: doorbell animation (CENTERED in its panel)
-- Bottom: dashboard/status
+- Left: Labs
+- Right: Main area split into:
+    - Logo panel (bordered) with PNG
+    - Doorbell panel (bordered) with ASCII animation
+- Bottom: compact dashboard/status strip
 - g: opens Wave Viewer screen (SIM waveform)
 
 Main keys:
   q  quit
   d  toggle animation
   g  open wave viewer
-
-Wave Viewer keys:
-  1/2/3  scenario
-  space  pause/resume
-  r      regenerate
-  b/esc  back (guaranteed)
 """
 
+# Dependency check (Textual + textual-image)
+import sys
+import subprocess
+import importlib.util
+from pathlib import Path
+
+
+def _pip_install(*pkgs: str) -> None:
+    """
+    Install pkgs using pip.
+    On Kali/Debian, prefer --break-system-packages.
+    """
+    cmd = [sys.executable, "-m", "pip", "install", "--break-system-packages", *pkgs]
+    try:
+        subprocess.check_call(cmd)
+        return
+    except Exception:
+        cmd2 = [sys.executable, "-m", "pip", "install", *pkgs]
+        try:
+            subprocess.check_call(cmd2)
+        except Exception as e:
+            print("\n[SDRForge] pip install failed.")
+            print("Try:")
+            print(f"  {sys.executable} -m pip install --break-system-packages {' '.join(pkgs)}")
+            raise SystemExit(1) from e
+
+
+def ensure_deps() -> None:
+    if importlib.util.find_spec("textual") is None:
+        print("[SDRForge] 'textual' not found. Installing...")
+        _pip_install("textual")
+
+    if importlib.util.find_spec("textual_image") is None:
+        print("[SDRForge] 'textual-image' not found. Installing...")
+        _pip_install("textual-image")
+
+
+ensure_deps()
+LOGO_ORIG = Path("images/SDRLogoDark.png")
+LOGO_CACHE = Path("images/.sdrforge_logo_small.png")
+ENABLE_LOGO_RESIZE = True
+
+def ensure_small_logo() -> str:
+    """
+    Generate a smaller logo image for terminal rendering.
+    This reduces 'blockiness' because fewer pixels must map to character cells.
+
+    If Pillow isn't installed, we fall back to the original.
+    """
+    if not ENABLE_LOGO_RESIZE:
+        return str(LOGO_ORIG)
+
+    #if cache exists and is newer than original, use it.
+    try:
+        if LOGO_CACHE.exists() and LOGO_CACHE.stat().st_mtime >= LOGO_ORIG.stat().st_mtime:
+            return str(LOGO_CACHE)
+    except Exception:
+        return str(LOGO_ORIG)
+
+    try:
+        from PIL import Image as PILImage  # type: ignore
+    except Exception:
+        # No pillow -> can't resize; use original
+        return str(LOGO_ORIG)
+
+    try:
+        if not LOGO_ORIG.exists():
+            return str(LOGO_ORIG)
+
+        img = PILImage.open(LOGO_ORIG).convert("RGBA")
+        target_w = 460
+        w, h = img.size
+        if w > target_w:
+            target_h = int(h * (target_w / w))
+            img = img.resize((target_w, target_h), resample=PILImage.LANCZOS)
+
+        LOGO_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        img.save(LOGO_CACHE)
+        return str(LOGO_CACHE)
+    except Exception:
+        return str(LOGO_ORIG)
+
+
+LOGO_PATH = ensure_small_logo()
+
+# imports after deps
 import math
 from dataclasses import dataclass
 from typing import List
@@ -28,8 +110,10 @@ from textual.screen import Screen
 from textual.widgets import Header, Footer, Static
 from textual.reactive import reactive
 
+from textual_image.widget import Image
 
-# ASCII ART
+
+# ASCII ART (animation)
 DOORBELL_ART = r"""
   .----.
  / .--. \
@@ -165,7 +249,6 @@ def bits_from_samples(samples: List[float], chunk: int = 240, thresh: float = 0.
     return "".join(bits)
 
 
-#SIM signal generator
 @dataclass
 class SimSignal:
     sr: int
@@ -211,7 +294,6 @@ def gen_sim_signal(scenario: int, seconds: float = 1.25, sr: int = 48000) -> Sim
     return SimSignal(sr=sr, samples=out, label=label)
 
 
-# Wave Viewer Screen 
 class WaveViewerScreen(Screen):
     scenario = reactive(3)
     paused = reactive(False)
@@ -250,45 +332,36 @@ class WaveViewerScreen(Screen):
         bits_tail = bits[-256:] if bits else ""
 
         top.update(
-            "Wave Viewer (SIM)\n"
-            "------------------\n"
+            "[b]Wave Viewer (SIM)[/b]\n"
+            "────────────────────\n"
             f"{self._sig.label}\n"
-            f"Sample rate: {self._sig.sr} Hz | paused={self.paused}\n\n"
-            "Wave blip:\n"
+            f"Sample rate: {self._sig.sr} Hz   •   paused: {self.paused}\n"
             f"{wave}\n"
         )
 
         bot.update(
-            "Derived 01s (simple amplitude threshold, tail):\n"
-            f"{bits_tail}\n\n"
-            "Keys:\n"
-            "  1/2/3  scenario\n"
-            "  space  pause/resume\n"
-            "  r      regenerate\n"
-            "  b/esc  back\n"
+            "[b]Derived 01s[/b] (amp threshold, tail)\n"
+            f"{bits_tail}\n"
+            "[b]Keys:[/b]  1/2/3 scenario   space pause   r regen   b/esc back\n"
         )
 
     def on_key(self, event) -> None:
         k = event.key
-
         if k in ("escape", "b"):
             event.prevent_default()
             event.stop()
             self.app.pop_screen()
             return
-
         if k == "space":
             event.prevent_default()
             event.stop()
             self.paused = not self.paused
             return
-
         if k == "r":
             event.prevent_default()
             event.stop()
             self._regenerate()
             return
-
         if k in ("1", "2", "3"):
             event.prevent_default()
             event.stop()
@@ -297,22 +370,66 @@ class WaveViewerScreen(Screen):
             return
 
 
-# Main App
 class SDRForgeApp(App):
+    TITLE = "SDRForge"
+    SUB_TITLE = "TUI Signal Lab (SIM)"
+
     CSS = """
-    Screen { layout: vertical; }
-    #top-row { height: 60%; }
-    #menu-panel { width: 40%; border: solid #666666; padding: 1 2; }
-    #doorbell-panel { width: 60%; border: solid #666666; padding: 0 1; }
-    #dashboard-panel { border: solid #666666; padding: 1 2; }
-    #wave_top { height: 60%; border: solid #666666; padding: 1 2; }
-    #wave_bottom { height: 40%; border: solid #666666; padding: 1 2; }
+    Screen { layout: vertical; padding: 0; }
+    #top-row { height: 1fr; }
+
+    /* Left labs */
+    #menu-panel {
+        width: 34;
+        height: 100%;
+        border: round #666666;
+        padding: 0 1;
+    }
+
+    /* Main right container */
+    #main-panel {
+        width: 1fr;
+        height: 100%;
+        border: round #666666;
+        padding: 0 1;
+    }
+
+    /* Separate boxed logo panel */
+    #logo-panel {
+        height: 14;
+        border: round #666666;
+        padding: 0 1;
+        content-align: center middle;
+    }
+
+    /* Image fills logo-panel */
+    #main-logo {
+        width: 100%;
+        height: 100%;
+        content-align: center middle;
+    }
+
+    /* Separate boxed animation panel */
+    #anim-panel {
+        height: 1fr;
+        border: round #666666;
+        padding: 0 1;
+        content-align: center middle;
+    }
+
+    #dashboard-panel {
+        height: 9;
+        border: round #666666;
+        padding: 0 1;
+    }
+    #wave_top { height: 1fr; border: round #666666; padding: 0 1; }
+    #wave_bottom { height: 9; border: round #666666; padding: 0 1; }
     """
 
     BINDINGS = [
         ("q", "quit_app", "Quit"),
         ("d", "toggle_doorbell", "Toggle Doorbell"),
-        ("g", "open_wave", "Open Wave Viewer"),
+        ("g", "open_wave", "Wave Viewer"),
     ]
 
     _anim_idx = 0
@@ -321,43 +438,35 @@ class SDRForgeApp(App):
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
+
         with Horizontal(id="top-row"):
-            with Vertical():
+            with Vertical(id="menu-panel"):
                 yield Static(
-                    "SDRForge Menu\n"
-                    "----------------\n"
-                    "Keys:\n"
-                    "  d  – Toggle doorbell animation\n"
-                    "  g  – Open Wave Viewer (SIM)\n"
-                    "  q  – Quit\n",
-                    id="menu-panel",
+                    "[b]Labs[/b]\n"
+                    " 2.) Car Hacking\n"
+                    " 3.) Satellite Hacking\n"
+                    " 4.) TBD\n"
+                    " 5.) TBD\n"
                 )
-            yield Static("", id="doorbell-panel")
-        yield Static(
-            "SDRForge Dashboard\n"
-            "-------------------\n"
-            "Status: Ready.\n\n"
-            "Keys:\n"
-            "  d  – Toggle doorbell animation\n"
-            "  g  – Open Wave Viewer (SIM)\n"
-            "  q  – Quit\n",
-            id="dashboard-panel",
-        )
+
+            with Vertical(id="main-panel"):
+                with Vertical(id="logo-panel"):
+                    yield Image(LOGO_PATH, id="main-logo")
+                yield Static("", id="anim-panel")
+
+        yield Static("", id="dashboard-panel")
         yield Footer()
 
     def on_mount(self) -> None:
+        self._set_status("Ready.")
         self.set_interval(0.04, self._tick_doorbell)
 
     def _set_status(self, msg: str) -> None:
         dash = self.query_one("#dashboard-panel", Static)
         dash.update(
-            "SDRForge Dashboard\n"
-            "-------------------\n"
-            f"Status: {msg}\n\n"
-            "Keys:\n"
-            "  d  – Toggle doorbell animation\n"
-            "  g  – Open Wave Viewer (SIM)\n"
-            "  q  – Quit\n"
+            "[b]Dashboard[/b]  "
+            f"[dim]Status:[/dim] [b]{msg}[/b]\n"
+            "[dim]d[/dim]=toggle  [dim]g[/dim]=wave  [dim]q[/dim]=quit"
         )
 
     def _tick_doorbell(self) -> None:
@@ -369,10 +478,10 @@ class SDRForgeApp(App):
             self._anim_idx = 0
             self._anim_stage = 1 - self._anim_stage
 
-        panel = self.query_one("#doorbell-panel", Static)
+        panel = self.query_one("#anim-panel", Static)
         panel_width = panel.size.width or self.size.width
-
-        panel.update(build_scene(self._anim_idx, self._anim_stage, term_w=panel_width))
+        usable_w = max(20, panel_width - 4)
+        panel.update(build_scene(self._anim_idx, self._anim_stage, term_w=usable_w))
 
     def action_quit_app(self) -> None:
         self.exit()
@@ -380,13 +489,15 @@ class SDRForgeApp(App):
     def action_toggle_doorbell(self) -> None:
         self._anim_running = not self._anim_running
         if not self._anim_running:
-            self.query_one("#doorbell-panel", Static).update("(animation paused)")
-        self._set_status("Doorbell animation toggled.")
+            self.query_one("#anim-panel", Static).update("[dim](animation paused)[/dim]")
+            self._set_status("Animation paused.")
+        else:
+            self._set_status("Animation running.")
 
     def action_open_wave(self) -> None:
         self.push_screen(WaveViewerScreen())
+        self._set_status("Wave Viewer open.")
 
 
 if __name__ == "__main__":
     SDRForgeApp().run()
-
